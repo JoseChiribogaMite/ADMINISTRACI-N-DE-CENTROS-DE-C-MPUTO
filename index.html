@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Interactivo — Administración de Centros de Cómputo</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #171a23;
+    --panel-2: #1f2330;
+    --border: #2a2f3e;
+    --text: #e6e8ee;
+    --muted: #9aa3b5;
+    --accent: #4f8cff;
+    --accent-2: #7c5cff;
+    --correct: #2fbf71;
+    --incorrect: #ef5350;
+    --gold: #ffc857;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 24px; }
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header p { color: var(--muted); margin-top: 6px; font-size: .95rem; }
+
+  .tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .tab {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: .95rem;
+    font-weight: 600;
+    transition: .18s;
+  }
+  .tab:hover { border-color: var(--accent); color: var(--text); }
+  .tab.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .statusbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-size: .9rem;
+    color: var(--muted);
+  }
+  .score { font-weight: 700; color: var(--gold); font-size: 1rem; }
+  .progress-track {
+    width: 100%;
+    height: 8px;
+    background: var(--panel-2);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 99px;
+    transition: width .3s ease;
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.35);
+  }
+  .q-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: .8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 12px;
+  }
+  .q-tag {
+    background: var(--panel-2);
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+  }
+  .question { font-size: 1.12rem; font-weight: 600; margin-bottom: 18px; }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    text-align: left;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 16px;
+    cursor: pointer;
+    font-size: .98rem;
+    color: var(--text);
+    transition: .15s;
+    width: 100%;
+  }
+  .option:hover:not(:disabled) { border-color: var(--accent); transform: translateY(-1px); }
+  .option .letter {
+    flex: 0 0 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    font-weight: 700;
+    font-size: .85rem;
+    color: var(--muted);
+  }
+  .option.correct { border-color: var(--correct); background: rgba(47,191,113,.12); }
+  .option.correct .letter { background: var(--correct); color: #fff; border-color: var(--correct); }
+  .option.incorrect { border-color: var(--incorrect); background: rgba(239,83,80,.12); }
+  .option.incorrect .letter { background: var(--incorrect); color: #fff; border-color: var(--incorrect); }
+  .option:disabled { cursor: default; }
+
+  .feedback {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    font-size: .95rem;
+    display: none;
+  }
+  .feedback.show { display: block; }
+  .feedback.good { background: rgba(47,191,113,.1); border: 1px solid var(--correct); }
+  .feedback.bad { background: rgba(239,83,80,.1); border: 1px solid var(--incorrect); }
+  .feedback b { display: block; margin-bottom: 4px; }
+  .feedback .expl { color: var(--muted); font-size: .9rem; }
+
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .btn {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 20px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: .95rem;
+    font-weight: 600;
+    transition: .15s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: none;
+    color: #fff;
+  }
+  .btn:disabled { opacity: .4; cursor: default; }
+
+  /* Result screen */
+  .result { text-align: center; }
+  .result .big {
+    font-size: 3.4rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .result p { color: var(--muted); margin: 8px 0 4px; }
+  .per-unit { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+  .per-unit .box {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 22px;
+  }
+  .per-unit .box .n { font-size: 1.5rem; font-weight: 700; }
+  .per-unit .box .l { font-size: .8rem; color: var(--muted); }
+
+  .review-list { text-align: left; margin-top: 20px; }
+  .review-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    font-size: .88rem;
+    align-items: flex-start;
+  }
+  .review-item .dot {
+    flex: 0 0 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center; font-size: .8rem; font-weight: 700; color: #fff;
+  }
+  .dot.ok { background: var(--correct); }
+  .dot.no { background: var(--incorrect); }
+
+  footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Administración de Centros de Cómputo</h1>
+    <p>Quiz interactivo · 40 preguntas de opción múltiple (20 por unidad)</p>
+  </header>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-mode="u1">Unidad 1</button>
+    <button class="tab" data-mode="u2">Unidad 2</button>
+    <button class="tab" data-mode="all">Las 40 preguntas</button>
+  </div>
+
+  <div class="statusbar">
+    <span id="counter">Pregunta 1 de 20</span>
+    <span class="score" id="score">Correctas: 0 / 0</span>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+
+  <div id="quizArea"></div>
+
+  <footer>
+    Materia: Administración de Centros de Cómputo (ECOTEC) · Unidad 1 y Unidad 2
+  </footer>
+</div>
+
+<script>
+const QUESTIONS = [
+  // ============ UNIDAD 1 (20) ============
+  {
+    unit: 1,
+    q: "¿Qué es un Centro de Cómputo (Data Center)?",
+    options: [
+      "Un cuarto que solo contiene servidores físicos",
+      "El espacio físico y lógico donde se concentran, procesan y distribuyen todos los recursos de TI de una organización",
+      "Un software empresarial para gestionar bases de datos",
+      "Un proveedor externo que alquila servidores"
+    ],
+    answer: 1,
+    expl: "Es un ecosistema complejo que incluye hardware, software y personal especializado; no es solo un cuarto de servidores."
+  },
+  {
+    unit: 1,
+    q: "¿Cuáles son los tres componentes principales del ecosistema de un centro de cómputo?",
+    options: [
+      "Hardware, Software y Personal especializado",
+      "Servidores, cámaras y sensores",
+      "Redes, nube y firewalls",
+      "CPU, RAM y almacenamiento"
+    ],
+    answer: 0,
+    expl: "El centro de cómputo se define como un ecosistema de hardware, software y el equipo humano que lo gestiona."
+  },
+  {
+    unit: 1,
+    q: "¿Cuáles son los dos grandes objetivos de un centro de cómputo?",
+    options: [
+      "Aumentar costos y reducir el personal de TI",
+      "Eliminar la tecnología y centralizar las ventas",
+      "Optimización de recursos y soporte a la toma de decisiones",
+      "Vender servicios de nube y hosting"
+    ],
+    answer: 2,
+    expl: "Sus objetivos son optimizar recursos (uso eficiente) y dar soporte a la toma de decisiones con datos precisos."
+  },
+  {
+    unit: 1,
+    q: "¿Qué rol es responsable de la instalación, configuración y mantenimiento de servidores y sistemas operativos?",
+    options: [
+      "Encargado de Redes",
+      "Soporte Técnico",
+      "Administrador de Sistemas",
+      "Especialista en Seguridad Informática"
+    ],
+    answer: 2,
+    expl: "El Administrador de Sistemas gestiona servidores y sistemas operativos."
+  },
+  {
+    unit: 1,
+    q: "¿Quién administra la conectividad, switches, routers y firewalls de la empresa?",
+    options: [
+      "Administrador de Sistemas",
+      "Encargado de Redes",
+      "Jefe de Centro de Cómputo",
+      "Desarrollador de Software"
+    ],
+    answer: 1,
+    expl: "El Encargado de Redes asegura la comunicación interna y externa."
+  },
+  {
+    unit: 1,
+    q: "¿Qué estructura organizacional es la más común en PyMEs y se organiza por especialidades o funciones?",
+    options: [
+      "Estructura Matricial",
+      "Estructura por Unidades de Negocio",
+      "Estructura Funcional",
+      "Estructura Global"
+    ],
+    answer: 2,
+    expl: "La funcional organiza al equipo por especialidades (soporte, redes, desarrollo)."
+  },
+  {
+    unit: 1,
+    q: "¿Qué estructura combina la organización funcional con la de proyectos, generando la situación de \"dos jefes\"?",
+    options: [
+      "Estructura Funcional",
+      "Estructura Matricial o Híbrida",
+      "Estructura Jerárquica",
+      "Estructura por Departamentos"
+    ],
+    answer: 1,
+    expl: "En la matricial, un empleado tiene un jefe funcional y un jefe de proyecto/unidad de negocio."
+  },
+  {
+    unit: 1,
+    q: "¿Qué organización creó el estándar Tier para certificar la confiabilidad y disponibilidad de un data center?",
+    options: [
+      "ISO",
+      "ANSI",
+      "Uptime Institute",
+      "IEEE"
+    ],
+    answer: 2,
+    expl: "Uptime Institute define los niveles Tier I–IV."
+  },
+  {
+    unit: 1,
+    q: "¿Qué nivel Tier es \"tolerante a fallos\", con redundancia total y disponibilidad del 99.995%?",
+    options: [
+      "Tier I",
+      "Tier II",
+      "Tier III",
+      "Tier IV"
+    ],
+    answer: 3,
+    expl: "Tier IV es tolerante a fallos y soporta un evento de falla grave sin afectar la operación."
+  },
+  {
+    unit: 1,
+    q: "¿Qué disponibilidad corresponde al Tier I (básico, sin componentes redundantes)?",
+    options: [
+      "99.995%",
+      "99.982%",
+      "99.671%",
+      "99.741%"
+    ],
+    answer: 2,
+    expl: "Tier I = 99.671%; Tier II = 99.741%; Tier III = 99.982%; Tier IV = 99.995%."
+  },
+  {
+    unit: 1,
+    q: "¿Qué norma internacional establece los requisitos de un SGSI y protege la confidencialidad, integridad y disponibilidad (tríada CID)?",
+    options: [
+      "ISO 9001",
+      "ISO/IEC 27001",
+      "ISO 50001",
+      "ISO/IEC 20000"
+    ],
+    answer: 1,
+    expl: "ISO 27001 gestiona la seguridad de la información mediante un SGSI."
+  },
+  {
+    unit: 1,
+    q: "¿Qué norma internacional es auditable y certifica el Sistema de Gestión de Servicios (SGS) de una organización?",
+    options: [
+      "ITIL",
+      "ISO/IEC 20000",
+      "ISO 50001",
+      "Uptime Institute"
+    ],
+    answer: 1,
+    expl: "ISO 20000 es el estándar certificable de gestión de servicios (basado en ITIL)."
+  },
+  {
+    unit: 1,
+    q: "¿Qué es ITIL?",
+    options: [
+      "Una norma certificable de seguridad",
+      "Un marco de trabajo (framework) de buenas prácticas para la Gestión de Servicios de TI (ITSM)",
+      "Un software de monitoreo de data centers",
+      "Un protocolo de red"
+    ],
+    answer: 1,
+    expl: "ITIL es una guía del \"cómo\" gestionar servicios de TI; no es una norma."
+  },
+  {
+    unit: 1,
+    q: "¿Qué tecnologías de contenedores y orquestación son fundamentales para la integración moderna de servicios?",
+    options: [
+      "VMware y Hyper-V",
+      "Docker y Kubernetes",
+      "Nagios y Zabbix",
+      "Apache y Nginx"
+    ],
+    answer: 1,
+    expl: "Docker (contenedores) y Kubernetes (orquestación) permiten la integración moderna."
+  },
+  {
+    unit: 1,
+    q: "¿Qué cubre el estándar ANSI/TIA-942?",
+    options: [
+      "La gestión de calidad de procesos",
+      "El diseño de la infraestructura de telecomunicaciones e instalaciones del centro de datos",
+      "La seguridad de la información",
+      "La gestión de energía"
+    ],
+    answer: 1,
+    expl: "TIA-942 cubre arquitectura, cableado, energía, enfriamiento y seguridad física, con ratings 1–4."
+  },
+  {
+    unit: 1,
+    q: "¿Qué buena práctica alinea los racks para que las entradas de aire frío y las salidas de aire caliente queden enfrentadas?",
+    options: [
+      "Monitoreo ambiental",
+      "Pasillos fríos y calientes",
+      "Redundancia A/B",
+      "Sistema VESDA"
+    ],
+    answer: 1,
+    expl: "Evita que el aire frío y caliente se mezclen, optimizando el enfriamiento."
+  },
+  {
+    unit: 1,
+    q: "¿Qué sistema proporciona energía instantánea mediante baterías durante un corte eléctrico?",
+    options: [
+      "Generador diésel",
+      "PDU",
+      "UPS (Sistema de Alimentación Ininterrumpida)",
+      "CRAC"
+    ],
+    answer: 2,
+    expl: "El UPS da energía inmediata con baterías y da tiempo para que arranquen los generadores."
+  },
+  {
+    unit: 1,
+    q: "¿Cuál es una característica clave del modelo on-premise?",
+    options: [
+      "Pago por uso y escalado inmediato",
+      "La empresa posee y controla todo el hardware, con alta inversión inicial (CapEx)",
+      "El mantenimiento lo realiza el proveedor",
+      "Los datos residen en servidores de terceros"
+    ],
+    answer: 1,
+    expl: "On-premise implica propiedad y control total con inversión de capital (CapEx) inicial."
+  },
+  {
+    unit: 1,
+    q: "¿En qué modelo de servicio cloud el proveedor ofrece una aplicación completa lista para usar (ej. Gmail, Dropbox)?",
+    options: [
+      "IaaS",
+      "PaaS",
+      "SaaS",
+      "On-premise"
+    ],
+    answer: 2,
+    expl: "SaaS entrega software completo por internet; el usuario solo se conecta y lo usa."
+  },
+  {
+    unit: 1,
+    q: "¿Qué modelo de centro de cómputo combina infraestructura local (on-premise) con nube pública y permite \"cloud bursting\"?",
+    options: [
+      "On-premise",
+      "Cloud público",
+      "Híbrido",
+      "Colocation"
+    ],
+    answer: 2,
+    expl: "El híbrido integra ambos entornos y permite desbordarse a la nube ante picos de demanda."
+  },
+
+  // ============ UNIDAD 2 (20) ============
+  {
+    unit: 2,
+    q: "¿Cuál es el objetivo principal de la ciberseguridad en un centro de cómputo?",
+    options: [
+      "Reducir el costo de la electricidad",
+      "Garantizar la confidencialidad, integridad y disponibilidad de la información (tríada CID)",
+      "Aumentar la velocidad de internet",
+      "Eliminar todos los firewalls"
+    ],
+    answer: 1,
+    expl: "El objetivo es proteger la tríada CID de la información y los servicios."
+  },
+  {
+    unit: 2,
+    q: "¿Cuál de las siguientes es una amenaza FÍSICA para un centro de cómputo?",
+    options: [
+      "Ransomware",
+      "DDoS",
+      "Borrado de backups y apagado de sistemas de climatización (sabotaje interno)",
+      "Phishing"
+    ],
+    answer: 2,
+    expl: "El sabotaje interno, el acceso no autorizado y las fallas ambientales son amenazas físicas."
+  },
+  {
+    unit: 2,
+    q: "¿A qué apuntan directamente los ataques modernos de ransomware en un datacenter?",
+    options: [
+      "A los PC de los empleados",
+      "A los hipervisores (VMware, Hyper-V) y cabinas de almacenamiento (SAN)",
+      "A las impresoras",
+      "A los teléfonos móviles"
+    ],
+    answer: 1,
+    expl: "Un ataque exitoso puede cifrar cientos de servidores virtuales simultáneamente."
+  },
+  {
+    unit: 2,
+    q: "¿Qué es un ataque a la cadena de suministro?",
+    options: [
+      "Robar discos duros del data center",
+      "Comprometer una actualización de un software de confianza para instalar una puerta trasera",
+      "Inundar la red con peticiones basura",
+      "Adivinar contraseñas por defecto"
+    ],
+    answer: 1,
+    expl: "El atacante compromete al proveedor de software, no directamente a la víctima."
+  },
+  {
+    unit: 2,
+    q: "¿Qué busca un ataque DDoS?",
+    options: [
+      "Cifrar los servidores",
+      "Saturar el ancho de banda y los firewalls hasta que los servicios legítimos sean inaccesibles",
+      "Robar credenciales de administrador",
+      "Modificar el código fuente"
+    ],
+    answer: 1,
+    expl: "DDoS inunda la conexión con millones de peticiones basura."
+  },
+  {
+    unit: 2,
+    q: "¿Cuál es la diferencia entre autenticación y autorización?",
+    options: [
+      "Son lo mismo",
+      "La autenticación verifica la identidad del usuario; la autorización determina los recursos a los que puede acceder",
+      "La autenticación otorga permisos; la autorización verifica la identidad",
+      "Ninguna es necesaria en un centro de cómputo"
+    ],
+    answer: 1,
+    expl: "Primero se autentica (quién eres), luego se autoriza (qué puedes hacer)."
+  },
+  {
+    unit: 2,
+    q: "¿Qué medida de seguridad de HARDWARE convierte la información en un formato ilegible sin la clave adecuada?",
+    options: [
+      "Blindaje físico",
+      "Cifrado de datos",
+      "Antivirus",
+      "Firewall"
+    ],
+    answer: 1,
+    expl: "El cifrado protege la confidencialidad de la información sensible."
+  },
+  {
+    unit: 2,
+    q: "¿Qué medida de SOFTWARE es esencial para corregir vulnerabilidades y proteger contra amenazas emergentes?",
+    options: [
+      "Cifrado de discos",
+      "Actualizaciones y parches",
+      "Control de acceso físico",
+      "Jaulas de seguridad"
+    ],
+    answer: 1,
+    expl: "Aplicar parches evita la explotación de vulnerabilidades conocidas."
+  },
+  {
+    unit: 2,
+    q: "¿Qué herramienta centraliza y protege las cuentas de administrador, con grabación de sesiones y cambio automático de contraseñas?",
+    options: [
+      "SIEM",
+      "PAM (Gestión de Acceso Privilegiado) / bóveda digital",
+      "DCIM",
+      "NGFW"
+    ],
+    answer: 1,
+    expl: "PAM guarda las cuentas privilegiadas en una \"bóveda digital\"."
+  },
+  {
+    unit: 2,
+    q: "¿Qué técnica divide la red del datacenter y restringe la comunicación entre servidores para prevenir movimientos laterales de atacantes?",
+    options: [
+      "Microsegmentación y firewalls internos",
+      "Cifrado de respaldos",
+      "Balanceo de carga",
+      "Virtualización"
+    ],
+    answer: 0,
+    expl: "La microsegmentación crea zonas de seguridad aisladas y bloquea el movimiento lateral."
+  },
+  {
+    unit: 2,
+    q: "¿Qué principio de seguridad afirma \"nunca confíes, siempre verifica\"?",
+    options: [
+      "Defensa en profundidad",
+      "Menor privilegio",
+      "Confianza Cero (Zero Trust)",
+      "Seguridad por oscuridad"
+    ],
+    answer: 2,
+    expl: "Zero Trust exige autenticar y autorizar cada solicitud, incluso dentro de la red."
+  },
+  {
+    unit: 2,
+    q: "¿Qué tipo de backup copia solo los cambios realizados desde el último backup?",
+    options: [
+      "Completo",
+      "Incremental",
+      "Diferencial",
+      "Espejo"
+    ],
+    answer: 1,
+    expl: "El incremental ahorra espacio y tiempo, pero requiere el completo inicial para restaurar."
+  },
+  {
+    unit: 2,
+    q: "¿Qué tipo de backup guarda todos los cambios desde el último backup completo?",
+    options: [
+      "Completo",
+      "Incremental",
+      "Diferencial",
+      "Sintético"
+    ],
+    answer: 2,
+    expl: "El diferencial equilibra tiempo y espacio respecto al completo."
+  },
+  {
+    unit: 2,
+    q: "¿Qué característica describe el almacenamiento de respaldos en la nube?",
+    options: [
+      "Acceso rápido pero riesgo de daños físicos",
+      "Flexible y escalable, accesible desde cualquier lugar, pero depende de una buena conexión a internet",
+      "No requiere internet",
+      "Solo para datos no críticos"
+    ],
+    answer: 1,
+    expl: "La nube ofrece flexibilidad y accesibilidad remota, dependiendo del internet."
+  },
+  {
+    unit: 2,
+    q: "¿Cuáles son los pasos de la evaluación de riesgos en un Plan de Continuidad de Negocio (BCP)?",
+    options: [
+      "Backup, recuperación y prueba",
+      "Identificación de amenazas, análisis de impacto y estrategias de mitigación",
+      "Encriptar, monitorear y auditar",
+      "Diseño, transición y operación"
+    ],
+    answer: 1,
+    expl: "Se identifican amenazas, se analiza su impacto y se definen mitigaciones."
+  },
+  {
+    unit: 2,
+    q: "¿Qué significa RTO en un plan de recuperación ante desastres?",
+    options: [
+      "El punto máximo de datos que se puede perder",
+      "El tiempo objetivo para recuperar la operación tras una interrupción",
+      "La cantidad de respaldos almacenados",
+      "El nivel de redundancia de discos"
+    ],
+    answer: 1,
+    expl: "RTO = Recovery Time Objective; RPO = Recovery Point Objective (datos tolerados a perder)."
+  },
+  {
+    unit: 2,
+    q: "¿Cuál es la diferencia entre los sitios de recuperación Hot, Warm y Cold?",
+    options: [
+      "Hot = activo en minutos; Warm = requiere aprovisionamiento parcial; Cold = solo instalaciones, tarda más",
+      "Todos tardan lo mismo",
+      "Cold es el más rápido",
+      "Hot no tiene equipos"
+    ],
+    answer: 0,
+    expl: "Hot tiene infraestructura operativa inmediata; Warm es parcial; Cold solo espacio/instalaciones."
+  },
+  {
+    unit: 2,
+    q: "¿Para qué se usan RAID y clustering en la continuidad?",
+    options: [
+      "Para reducir el consumo eléctrico",
+      "Para proporcionar redundancia y alta disponibilidad de datos y servicios",
+      "Para eliminar la necesidad de backups",
+      "Para cifrar la red"
+    ],
+    answer: 1,
+    expl: "RAID replica/paridad en discos y clustering permite conmutación por fallo (failover)."
+  },
+  {
+    unit: 2,
+    q: "¿Por qué las contraseñas por defecto (admin/admin) en PDUs y cámaras IP son un riesgo crítico?",
+    options: [
+      "Porque un atacante puede cortar remotamente la energía o controlar dispositivos de infraestructura",
+      "Porque ocupan mucho espacio en disco",
+      "Porque ralentizan la red",
+      "No representan ningún riesgo"
+    ],
+    answer: 0,
+    expl: "Son vectores de ataque físico-digital que comprometen infraestructura crítica."
+  },
+  {
+    unit: 2,
+    q: "¿Qué vulnerabilidad de IA permite a un atacante inyectar logs falsos para que el mantenimiento predictivo ignore fallos reales?",
+    options: [
+      "Evasión contra SIEM",
+      "Envenenamiento de datos",
+      "DDoS",
+      "Phishing"
+    ],
+    answer: 1,
+    expl: "El envenenamiento \"entrena\" al modelo con datos corruptos para engañarlo."
+  }
+];
+
+const UNIT_LABELS = { 1: "Unidad 1", 2: "Unidad 2" };
+const LETTERS = ["A", "B", "C", "D"];
+
+let mode = "u1";            // u1 | u2 | all
+let currentIndex = 0;
+let filtered = [];
+let answers = {};           // idx -> selected option index
+let results = {};           // idx -> boolean
+
+const tabsEl = document.getElementById("tabs");
+const quizArea = document.getElementById("quizArea");
+const counterEl = document.getElementById("counter");
+const scoreEl = document.getElementById("score");
+const progressEl = document.getElementById("progress");
+
+function buildFiltered() {
+  filtered = QUESTIONS
+    .map((q, i) => ({ q, i }))
+    .filter(x => mode === "all" || x.q.unit === Number(mode.replace("u", "")));
+}
+
+function buildTabActive() {
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.mode === mode);
+  });
+}
+
+function currentScore() {
+  let ok = 0, answered = 0;
+  filtered.forEach(({ i }) => {
+    if (results[i] !== undefined) { answered++; if (results[i]) ok++; }
+  });
+  return { ok, answered, total: filtered.length };
+}
+
+function updateStatus() {
+  const { ok, answered, total } = currentScore();
+  counterEl.textContent = `Pregunta ${filtered.length ? currentIndex + 1 : 0} de ${total}`;
+  scoreEl.textContent = `Correctas: ${ok} / ${answered}`;
+  progressEl.style.width = (answered / total * 100) + "%";
+}
+
+function render() {
+  if (!filtered.length) { quizArea.innerHTML = ""; return; }
+  const { q, i } = filtered[currentIndex];
+  const sel = answers[i];
+  const answered = sel !== undefined;
+
+  let html = `<div class="card">`;
+  html += `<div class="q-meta"><span class="q-tag">${UNIT_LABELS[q.unit]}</span><span>${currentIndex + 1} / ${filtered.length}</span></div>`;
+  html += `<div class="question">${q.q}</div>`;
+  html += `<div class="options">`;
+  q.options.forEach((opt, oi) => {
+    let cls = "option";
+    if (answered) {
+      if (oi === q.answer) cls += " correct";
+      else if (oi === sel) cls += " incorrect";
+    }
+    html += `<button class="${cls}" data-oi="${oi}" ${answered ? "disabled" : ""}>`;
+    html += `<span class="letter">${LETTERS[oi]}</span><span>${opt}</span></button>`;
+  });
+  html += `</div>`;
+
+  if (answered) {
+    const good = sel === q.answer;
+    html += `<div class="feedback show ${good ? "good" : "bad"}">`;
+    html += `<b>${good ? "✓ ¡Correcto!" : "✗ Incorrecto"}</b>`;
+    html += `<span class="expl">${q.expl}</span>`;
+    html += `</div>`;
+  }
+
+  html += `<div class="nav">`;
+  html += `<button class="btn" id="prevBtn" ${currentIndex === 0 ? "disabled" : ""}>← Anterior</button>`;
+  html += `<button class="btn primary" id="nextBtn">${currentIndex === filtered.length - 1 ? "Ver resultado" : "Siguiente →"}</button>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  quizArea.innerHTML = html;
+
+  document.querySelectorAll(".option").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const oi = Number(btn.dataset.oi);
+      answers[i] = oi;
+      results[i] = (oi === q.answer);
+      render();
+    });
+  });
+
+  const nextBtn = document.getElementById("nextBtn");
+  if (nextBtn) nextBtn.addEventListener("click", next);
+  const prevBtn = document.getElementById("prevBtn");
+  if (prevBtn) prevBtn.addEventListener("click", () => { currentIndex--; render(); });
+
+  updateStatus();
+}
+
+function next() {
+  if (currentIndex < filtered.length - 1) { currentIndex++; render(); }
+  else { renderResult(); }
+}
+
+function renderResult() {
+  const { ok, answered, total } = currentScore();
+  const pct = total ? Math.round(ok / total * 100) : 0;
+
+  // per-unit breakdown
+  let per = { 1: { ok: 0, n: 0 }, 2: { ok: 0, n: 0 } };
+  filtered.forEach(({ i }) => {
+    const u = filtered.find(x => x.i === i).q.unit;
+    per[u].n++;
+    if (results[i]) per[u].ok++;
+  });
+
+  let html = `<div class="card result">`;
+  html += `<div class="big">${pct}%</div>`;
+  html += `<p>Respondiste ${answered} de ${total} preguntas · ${ok} correctas</p>`;
+  html += `<div class="per-unit">`;
+  [1, 2].forEach(u => {
+    if (per[u].n === 0) return;
+    html += `<div class="box"><div class="n">${per[u].ok} / ${per[u].n}</div><div class="l">Unidad ${u}</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="nav" style="justify-content:center;">`;
+  html += `<button class="btn primary" id="resetBtn">Reintentar</button>`;
+  html += `<button class="btn" id="reviewBtn">Revisar respuestas</button>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  quizArea.innerHTML = html;
+  counterEl.textContent = "Resultado";
+  updateStatus();
+
+  document.getElementById("resetBtn").addEventListener("click", resetQuiz);
+  document.getElementById("reviewBtn").addEventListener("click", renderReview);
+}
+
+function renderReview() {
+  let html = `<div class="card"><h2 style="margin-bottom:16px;">Revisión de respuestas</h2><div class="review-list">`;
+  filtered.forEach(({ i }, idx) => {
+    const q = filtered.find(x => x.i === i).q;
+    const sel = answers[i];
+    const ok = results[i];
+    const dot = ok ? '<span class="dot ok">✓</span>' : '<span class="dot no">✗</span>';
+    html += `<div class="review-item">${dot}<div><b>${idx + 1}. ${q.q}</b><br><span style="color:var(--muted)">Tu respuesta: ${sel !== undefined ? LETTERS[sel] : "—"} · Correcta: ${LETTERS[q.answer]}</span></div></div>`;
+  });
+  html += `</div><div class="nav" style="justify-content:center;margin-top:18px;"><button class="btn primary" id="backResultBtn">Volver al resultado</button></div></div>`;
+  quizArea.innerHTML = html;
+  document.getElementById("backResultBtn").addEventListener("click", renderResult);
+}
+
+function resetQuiz() {
+  answers = {};
+  results = {};
+  currentIndex = 0;
+  render();
+}
+
+tabsEl.addEventListener("click", (e) => {
+  const tab = e.target.closest(".tab");
+  if (!tab) return;
+  mode = tab.dataset.mode;
+  answers = {};
+  results = {};
+  currentIndex = 0;
+  buildFiltered();
+  buildTabActive();
+  render();
+});
+
+// init
+buildFiltered();
+buildTabActive();
+render();
+</script>
+</body>
+</html>
