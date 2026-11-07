@@ -1,0 +1,29 @@
+Estudiantes:
+
+
+
+Acá les dejo la fórmula para calcular la disponibilidad por mes.
+
+
+
+Disponibilidad = ( Total de minutos por mes activo / Total de minutos por mes ) * 100
+
+
+
+Para el caso que vimos en clase. En enero se tuvo una caída del portal de 20 minutos, entonces cuál es la disponibilidad? Considere que en el mes hay un total de 43200 minutos.
+
+
+
+Disponibilidad = ( 43200 - 20 ) / 43200 * 100 = 99,95%
+
+
+
+Espero esto les sirva. Cualquier duda estoy atento
+
+
+
+
+
+Saludos,
+
+Christian
